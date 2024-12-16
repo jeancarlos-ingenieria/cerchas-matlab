@@ -11,7 +11,10 @@ E = 1;
 
 % Escalas
 
-grafDeformada = 1;
+grafEstructura = 0;
+grafDeformada = 0;
+grafSolicitacion  =0;
+grafCargaApoyo = 1;
 escalaDef = 0.005;
 
 % Nudos
@@ -36,7 +39,8 @@ apoyos = [2 1 0;
 
 % Cargas
 
-cargas = [4 2 -4];
+cargas = [4 2 -4;
+          2 6 3];
 
 % ===================================
 % Inicio del programa
@@ -180,13 +184,42 @@ U(gdlLibres) = UReducido;
 
 R = kEstructura * U - F;
 
+% Calculando solitaciones de los elementos
+
+for i=1:nroElem
+  nudo1 = elementos(i, 2);
+  nudo2 = elementos(i, 3);
+
+  u1 = U(nudo1*2-1);
+  u2 = U(nudo1*2);
+  u3 = U(nudo2*2-1);
+  u4 = U(nudo2*2);
+
+   alfa = angulos(i);
+   cs = cosd(alfa);
+   sn = sind(alfa);
+   longitud = longitudes(i);
+   T = [cs sn 0 0; 0 0 cs sn];
+
+   uLocal = T*[u1;u2;u3;u4];
+   deltaU = uLocal(2)-uLocal(1);
+
+    area=elementos(i,4);
+    elastic=elementos(i,5);
+
+    solicitacion(i)=elastic*area/longitud*deltaU;
+
+
+endfor
+
 % Ploteando
 
 hold on
 
 % Estructura sin deformar
 
-for i = 1:nroElem
+if (grafEstructura == 1)
+  for i = 1:nroElem
     nudo1 = elementos(i, 2);
     nudo2 = elementos(i, 3);
 
@@ -196,8 +229,8 @@ for i = 1:nroElem
     y2 = nudos(nudo2, 3);
 
     plot([x1 x2], [y1 y2], "linewidth", 1, "color", "k")
-endfor
-
+  endfor
+endif
 
 
 for i = 1:nroNudos
@@ -208,7 +241,7 @@ endfor
 
 % Estructura deformada
 
-
+if (grafDeformada == 1)
 for i = 1:nroElem
     nudo1 = elementos(i, 2);
     nudo2 = elementos(i, 3);
@@ -218,8 +251,75 @@ for i = 1:nroElem
     y1 = nudosDesplazados(nudo1, 3);
     y2 = nudosDesplazados(nudo2, 3);
 
-    plot([x1 x2], [y1 y2], "linewidth", 1, "color", "r")
+    plot([x1 x2], [y1 y2], "linewidth", 1, "color", "b")
 endfor
+endif
+
+% Solicitaciones
+
+if (grafSolicitacion == 1)
+  maxSolic = max(solicitacion);
+  minSolic = min(solicitacion);
+
+  for i = 1:nroElem
+    nudo1 = elementos(i, 2);
+    nudo2 = elementos(i, 3);
+
+    x1 = nudos(nudo1, 2);
+    x2 = nudos(nudo2, 2);
+    y1 = nudos(nudo1, 3);
+    y2 = nudos(nudo2, 3);
+
+    xc = (x1+x2)/2;
+    yc = (y1+y2)/2;
+    texto = num2str(solicitacion(i));
+
+
+
+    if (solicitacion(i) >= 0)
+intensidad = abs(solicitacion(i)/maxSolic);
+    text(xc,yc,texto,"color", [0 intensidad 0]);
+  else
+    intensidad = abs(solicitacion(i)/minSolic);
+    text(xc,yc,texto,"color", [intensidad 0 0]);
+    endif
+
+
+    plot([x1 x2], [y1 y2], "linewidth", 1, "color", [.5 .5 .5])
+  endfor
+endif
+
+% Grafica de cargas y apoyos
+
+escalaCarga = 1
+
+if (grafCargaApoyo == 1)
+
+  for i = 1:nroElem
+    nudo1 = elementos(i, 2);
+    nudo2 = elementos(i, 3);
+
+    x1 = nudos(nudo1, 2);
+    x2 = nudos(nudo2, 2);
+    y1 = nudos(nudo1, 3);
+    y2 = nudos(nudo2, 3);
+
+    plot([x1 x2], [y1 y2], "linewidth", 1, "color", "k")
+  endfor
+
+  for i = 1:nroCargas;
+    nudo = cargas(i,1);
+    cargaX = cargas(i,2);
+    cargaY = cargas(i,3);
+    x = nudos(nudo,2);
+    y = nudos(nudo,3);
+
+    cargaXPlot = cargaX/escalaCarga;
+    cargaYPlot = cargaY/escalaCarga;
+
+  endfor
+
+endif
 
 axis equal
 
